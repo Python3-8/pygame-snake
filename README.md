@@ -6,6 +6,7 @@ Navigate to your preferred directory, clone the repository, and `cd` into the ne
 ```sh
 $ cd /path/to/Desktop/TryIt
 $ git clone https://github.com/Python3-8/pygame-snake.git
+...
 $ cd pygame-snake
 ```
 Then create a virtual environment (optional):
@@ -22,6 +23,7 @@ $ .\venv\Scripts\activate # on windows
 Then install dependencies with
 ```sh
 $ python3 -m pip install -r requirements.txt
+...
 ```
 And finally, enjoy!
 ```sh
