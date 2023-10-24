@@ -6,7 +6,9 @@ import pygame
 
 # globals
 scrw, scrh = 600, 600
+score_sec_width = 200
 bg_color = 0, 0, 0
+game_box_opacity = 32
 snakew, snakeh = 20, 20
 snake_color = 255, 255, 255
 head_color = 255, 255, 255
@@ -165,7 +167,8 @@ class DirectionChange:
 
 # initialize game
 pygame.init()
-scr = pygame.display.set_mode((scrw, scrh))
+pygame.font.init()
+scr = pygame.display.set_mode((scrw + score_sec_width, scrh))
 pygame.display.set_caption('Pygame Snake')
 clock = pygame.time.Clock()
 
@@ -175,26 +178,45 @@ food = Food.spawn()
 snake_parts: list[SnakePart] = [head]
 # queue of direction changes and their positions
 direction_changes: tuple[DirectionChange] = ()
+score = 0
+score_font = pygame.font.SysFont('monospace', 128)
+game_over_font = pygame.font.SysFont('monospace', 32)
 
 
 def grow():
     snake_parts.append(snake_parts[-1].successor)
 
 
-def brightness(color: tuple[int], brightness: float):
+def brightness(color: tuple[int], brightness: float) -> tuple[float]:
     return tuple(brightness * color_value for color_value in color)
 
 
+def invert(color: tuple[int]) -> tuple[int]:
+    return tuple(255 - color_value for color_value in color)
+
+
+def show_score():
+    text = score_font.render(str(score), False, invert(bg_color))
+    scr.blit(text, (scrw + (score_sec_width - text.get_width()) /
+             2, (scrh - text.get_height()) / 2))
+
+
+def show_game_over():
+    text = game_over_font.render(f'GAME OVER with score {
+        score}', False, invert(bg_color))
+    scr.blit(text, ((scrw + score_sec_width - text.get_width()) /
+             2, (scrh - text.get_height()) / 2))
+
+
 # mainloop
-run = True
-paused = False
+run, paused, game_over = True, False, False
 while run:
     clock.tick(fps)
     # handle events
     for event in pygame.event.get():
-        if event.type == pygame.QUIT:
+        if event.type == pygame.QUIT or event.type == pygame.KEYDOWN and event.key == pygame.K_q:
             run = False
-        elif event.type == pygame.KEYDOWN:
+        elif not game_over and event.type == pygame.KEYDOWN:
             if event.key == pygame.K_SPACE:
                 paused = not paused
             if not paused:
@@ -216,39 +238,48 @@ while run:
                 # sys.stdout.write(f'{len(direction_changes)}: ')
                 # pprint.pprint(direction_changes)
                 # sys.stdout.flush()
-    if not paused:
-        scr.fill(bg_color)
+    scr.fill(bg_color)
+    if not game_over:
+        show_score()
+        game_box = pygame.Surface((scrw, scrh), pygame.SRCALPHA)
+        game_box.fill((255, 255, 255, game_box_opacity))
+        scr.blit(game_box, (0, 0))
         # drawing food
         food_rect = pygame.draw.rect(scr, food_color, food.rect)
         # drawing snake
         body_rects = ()
         for index, snake_part in enumerate(snake_parts):
             virtual_pos = snake_part.virtual_pos
-            remove_direction_changes = ()
-            for direction_change in direction_changes:
-                if virtual_pos == direction_change.virtual_pos and not direction_change.already_changed(snake_part):
-                    snake_part.change_direction(direction_change.to)
-                    direction_change.add_changed(snake_part)
-                    if index == len(snake_parts) - 1:
-                        # this is the last snake part
-                        remove_direction_changes += direction_change,
-            direction_changes = tuple(
-                direction_change for direction_change in direction_changes if direction_change not in remove_direction_changes)
-            snake_part.move()
+            if not paused:
+                remove_direction_changes = ()
+                for direction_change in direction_changes:
+                    if virtual_pos == direction_change.virtual_pos and not direction_change.already_changed(snake_part):
+                        snake_part.change_direction(direction_change.to)
+                        direction_change.add_changed(snake_part)
+                        if index == len(snake_parts) - 1:
+                            # this is the last snake part to change direction here
+                            remove_direction_changes += direction_change,
+                direction_changes = tuple(
+                    direction_change for direction_change in direction_changes if direction_change not in remove_direction_changes)
+                snake_part.move()
             if index == 0:
-                snake_part_rect = pygame.draw.rect(
-                    scr, brightness(head_color, head_brightness), snake_part.rect)
-                head_rect = snake_part_rect
+                head_rect = pygame.draw.rect(scr, brightness(
+                    head_color, head_brightness), snake_part.rect)
             else:
-                snake_part_rect = pygame.draw.rect(
-                    scr, snake_color, snake_part.rect)
-                body_rects += snake_part_rect,
-        if head_rect.colliderect(food_rect):
-            food = Food.spawn()
-            grow()
-        elif head_rect.collidelist(body_rects) != -1:
-            # snake has collided with itself
-            run = False
-        pygame.display.update()
+                body_rects += pygame.draw.rect(scr,
+                                               snake_color, snake_part.rect),
+        if not paused:
+            if head_rect.colliderect(food_rect):
+                # snake has eaten food
+                score += 1
+                food = Food.spawn()
+                grow()
+            elif head_rect.collidelist(body_rects) != -1:
+                # snake has collided with itself
+                game_over = True
+                paused = True
+    else:
+        show_game_over()
+    pygame.display.update()
 
 pygame.quit()

@@ -1,7 +1,7 @@
 # Pygame Snake
 A crappy Snake clone made in like 4 hours cause why not
 
-## How to play
+## Install
 Navigate to your preferred directory, clone the repository, and `cd` into the new directory
 ```sh
 $ cd /path/to/Desktop/TryIt
@@ -29,3 +29,6 @@ And finally, enjoy!
 ```sh
 $ python3 main.py
 ```
+
+## How to play
+This is just Snake, except you can pause with <kbd>Space</kbd>.
